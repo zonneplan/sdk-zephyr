@@ -576,6 +576,7 @@ void z_impl_log_panic(void)
 			log_backend_panic(backend);
 		}
 	}
+	panic_mode = true;
 
 	if (!IS_ENABLED(CONFIG_LOG_IMMEDIATE)) {
 		/* Flush */
@@ -583,7 +584,6 @@ void z_impl_log_panic(void)
 		}
 	}
 
-	panic_mode = true;
 }
 
 #ifdef CONFIG_USERSPACE
@@ -633,7 +633,9 @@ static void msg_process(struct log_msg *msg, bool bypass)
 		}
 	}
 
-	log_msg_put(msg);
+	if (!panic_mode) {
+		log_msg_put(msg);
+	}
 }
 
 void dropped_notify(void)
