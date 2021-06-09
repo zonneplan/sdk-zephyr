@@ -57,6 +57,10 @@ struct nvs_fs {
 
 	struct k_mutex nvs_lock;
 	struct device *flash_device;
+	const struct flash_parameters {
+		size_t write_block_size;
+		uint8_t erase_value; /* Byte value of erased flash */
+	} *flash_parameters;
 };
 
 /**
