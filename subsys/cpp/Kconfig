@@ -10,7 +10,7 @@ menuconfig CPLUSPLUS
 
 if CPLUSPLUS
 
-choice
+choice STD_CPP
 	prompt "C++ Standard"
 	default STD_CPP11
 	help
