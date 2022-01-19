@@ -415,6 +415,28 @@ def dt_nodelabel_has_compat(kconf, _, label, compat):
 
     return "n"
 
+def dt_node_has_compat(kconf, name, node, compat):
+    if doc_mode or edt is None:
+        return "n"
+
+    if name == "dt_alias_has_compat":
+        if node.startswith("/"):
+            # EDT.get_node() works with either aliases or paths. If we
+            # are specifically being asked about an alias, reject paths.
+            return "n"
+    else:
+        # Make sure this is being called appropriately.
+        assert name == "dt_path_has_compat"
+
+    try:
+        node = edt.get_node(node)
+    except edtlib.EDTError:
+        return "n"
+
+    if compat in node.compats and node.status == "okay":
+        return "y"
+
+    return "n"
 
 def dt_nodelabel_path(kconf, _, label):
     """
@@ -475,6 +497,8 @@ functions = {
         "dt_node_int_prop_int": (dt_node_int_prop, 2, 2),
         "dt_node_int_prop_hex": (dt_node_int_prop, 2, 2),
         "dt_nodelabel_has_compat": (dt_nodelabel_has_compat, 2, 2),
+        "dt_alias_has_compat": (dt_node_has_compat, 2, 2),
+        "dt_path_has_compat": (dt_node_has_compat, 2, 2),
         "dt_nodelabel_path": (dt_nodelabel_path, 1, 1),
         "shields_list_contains": (shields_list_contains, 1, 1),
 }
