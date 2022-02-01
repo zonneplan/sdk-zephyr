@@ -33,4 +33,7 @@ config SOC_ATMEL_SAMD_OSC8M_AS_MAIN
 
 endchoice
 
+config SOC_ATMEL_SAMD_BOD33
+	bool "Enable BOD33"
+
 endif # SOC_SERIES_SAMD20 || SOC_SERIES_SAMD21
