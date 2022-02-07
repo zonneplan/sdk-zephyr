@@ -41,6 +41,8 @@ struct i2c_sam0_dev_config {
 	uint8_t read_dma_request;
 	uint8_t dma_channel;
 #endif
+	uint32_t num_pins;
+	struct soc_port_pin pins[];
 };
 
 struct i2c_sam0_msg {
@@ -683,6 +685,10 @@ static int i2c_sam0_initialize(const struct device *dev)
 	SercomI2cm *i2c = cfg->regs;
 	int retval;
 
+	/* Connect pins to the peripheral 0 = scl  1 = sda */
+	soc_port_configure(&cfg->pins[0]);
+	soc_port_configure(&cfg->pins[1]);
+
 #ifdef MCLK
 	/* Enable the GCLK */
 	GCLK->PCHCTRL[cfg->gclk_core_id].reg = GCLK_PCHCTRL_GEN_GCLK0 |
@@ -788,6 +794,8 @@ static const struct i2c_sam0_dev_config i2c_sam0_dev_config_##n = {	\
 	.mclk = (volatile uint32_t *)MCLK_MASK_DT_INT_REG_ADDR(n),	\
 	.mclk_mask = BIT(DT_INST_CLOCKS_CELL_BY_NAME(n, mclk, bit)),	\
 	.gclk_core_id = DT_INST_CLOCKS_CELL_BY_NAME(n, gclk, periph_ch),\
+	.num_pins = ATMEL_SAM0_DT_INST_NUM_PINS(n),			\
+	.pins = ATMEL_SAM0_DT_INST_PINS(n),				\
 	.irq_config_func = &i2c_sam0_irq_config_##n			\
 	I2C_SAM0_DMA_CHANNELS(n)					\
 }
@@ -798,6 +806,8 @@ static const struct i2c_sam0_dev_config i2c_sam0_dev_config_##n = {	\
 	.bitrate = DT_INST_PROP(n, clock_frequency),			\
 	.pm_apbcmask = BIT(DT_INST_CLOCKS_CELL_BY_NAME(n, pm, bit)),	\
 	.gclk_clkctrl_id = DT_INST_CLOCKS_CELL_BY_NAME(n, gclk, clkctrl_id),\
+	.num_pins = ATMEL_SAM0_DT_INST_NUM_PINS(n),			\
+	.pins = ATMEL_SAM0_DT_INST_PINS(n),				\
 	.irq_config_func = &i2c_sam0_irq_config_##n,			\
 	I2C_SAM0_DMA_CHANNELS(n)					\
 }
