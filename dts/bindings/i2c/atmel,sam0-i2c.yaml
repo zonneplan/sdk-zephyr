@@ -36,3 +36,15 @@ properties:
 
         For example
            dma-names = "tx", "rx";
+    pinctrl-0:
+      type: phandles
+      description: |
+        PIO pin configuration for SCL & SDA signals.  We expect that
+        the phandles will reference pinctrl nodes.  These nodes will
+        have a nodelabel that matches the Atmel SoC HAL defines and
+        be of the form p<port><pin><periph>_<inst>_<signal>.
+
+        For example the I2C0 on SAMD21 would be
+           pinctrl-0 = <&pa9d_sercom2_pad1 &pa8d_sercom2_pad0>;
+
+      required: true
