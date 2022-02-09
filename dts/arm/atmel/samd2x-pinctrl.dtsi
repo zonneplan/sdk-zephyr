@@ -72,6 +72,27 @@
 			DT_ATMEL_PORT(sercom5, pad3, b,  1, d, pinmux-enable);
 			DT_ATMEL_PORT(sercom5, pad0, b,  2, d, pinmux-enable);
 			DT_ATMEL_PORT(sercom5, pad1, b,  3, d, pinmux-enable);
+
+			DT_ATMEL_PORT(adc,  chan0, a,   2, b, pinmux-enable);
+			DT_ATMEL_PORT(adc,  chan1, a,   3, b, pinmux-enable);
+			DT_ATMEL_PORT(adc,  chan2, b,   8, b, pinmux-enable);
+			DT_ATMEL_PORT(adc,  chan3, b,   9, b, pinmux-enable);
+			DT_ATMEL_PORT(adc,  chan4, a,   4, b, pinmux-enable);
+			DT_ATMEL_PORT(adc,  chan5, a,   5, b, pinmux-enable);
+			DT_ATMEL_PORT(adc,  chan6, a,   6, b, pinmux-enable);
+			DT_ATMEL_PORT(adc,  chan7, a,   7, b, pinmux-enable);
+			DT_ATMEL_PORT(adc,  chan8, b,   0, b, pinmux-enable);
+			DT_ATMEL_PORT(adc,  chan9, b,   1, b, pinmux-enable);
+			DT_ATMEL_PORT(adc, chan10, b,   2, b, pinmux-enable);
+			DT_ATMEL_PORT(adc, chan11, b,   3, b, pinmux-enable);
+			DT_ATMEL_PORT(adc, chan12, b,   4, b, pinmux-enable);
+			DT_ATMEL_PORT(adc, chan13, b,   5, b, pinmux-enable);
+			DT_ATMEL_PORT(adc, chan14, b,   6, b, pinmux-enable);
+			DT_ATMEL_PORT(adc, chan15, b,   7, b, pinmux-enable);
+			DT_ATMEL_PORT(adc, chan16, a,   8, b, pinmux-enable);
+			DT_ATMEL_PORT(adc, chan17, a,   9, b, pinmux-enable);
+			DT_ATMEL_PORT(adc, chan18, a,  10, b, pinmux-enable);
+			DT_ATMEL_PORT(adc, chan19, a,  11, b, pinmux-enable);
 		};
 	};
 };
