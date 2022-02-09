@@ -56,6 +56,8 @@ struct adc_sam0_cfg {
 	uint16_t prescaler;
 
 	void (*config_func)(const struct device *dev);
+	uint32_t num_pins;
+	struct soc_port_pin pins[];
 };
 
 #define DEV_CFG(dev) \
@@ -460,6 +462,11 @@ static int adc_sam0_init(const struct device *dev)
 	struct adc_sam0_data *data = DEV_DATA(dev);
 	Adc *const adc = cfg->regs;
 
+	/* Set adc pins to correct mux */
+	for (size_t i=0;i<cfg->num_pins;i++) {
+		soc_port_configure(&cfg->pins[i]);
+	}
+
 #ifdef MCLK
 	GCLK->PCHCTRL[cfg->gclk_id].reg = cfg->gclk_mask | GCLK_PCHCTRL_CHEN;
 
@@ -596,6 +603,8 @@ do {									\
 					  _FREQ_HZ) /			\
 			DT_INST_PROP(n, prescaler),			\
 		.config_func = &adc_sam0_config_##n,			\
+		.num_pins = ATMEL_SAM0_DT_INST_NUM_PINS(n),		\
+		.pins = ATMEL_SAM0_DT_INST_PINS(n),			\
 	};								\
 	static struct adc_sam0_data adc_sam_data_##n = {		\
 		ADC_CONTEXT_INIT_TIMER(adc_sam_data_##n, ctx),		\
