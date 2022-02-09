@@ -58,5 +58,15 @@ properties:
   "#pwm-cells":
     const: 1
 
+  pinctrl-0:
+      type: phandles
+      description: |
+        PIO pin configuration for pwm pin and channel.  We expect that
+        the phandles will reference pinctrl nodes.  These nodes will
+        have a nodelabel that matches the Atmel SoC HAL defines and
+        be of the form p<port><pin><periph>_<inst>_wo<output_number>.
+        For example the PWM on SAMD21 would be
+           pinctrl-0 = <&pa12f_pwm_wo6>;
+
 pwm-cells:
   - channel

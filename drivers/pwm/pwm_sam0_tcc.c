@@ -32,6 +32,8 @@ struct pwm_sam0_config {
 	uint32_t pm_apbcmask;
 	uint16_t gclk_clkctrl_id;
 #endif
+	uint32_t num_pins;
+	struct soc_port_pin pins[];
 };
 
 #define DEV_CFG(dev) ((const struct pwm_sam0_config *const)(dev)->config)
@@ -105,6 +107,11 @@ static int pwm_sam0_init(const struct device *dev)
 	const struct pwm_sam0_config *const cfg = DEV_CFG(dev);
 	Tcc *regs = cfg->regs;
 
+	/* Set pwm pins to correct mux */
+	for (size_t i=0;i<cfg->num_pins;i++) {
+		soc_port_configure(&cfg->pins[i]);
+	}
+
 	/* Enable the clocks */
 #ifdef MCLK
 	GCLK->PCHCTRL[cfg->gclk_id].reg =
@@ -154,6 +161,8 @@ static const struct pwm_driver_api pwm_sam0_driver_api = {
 				      DT_INST_PROP(inst, prescaler)),	       \
 		.freq = SOC_ATMEL_SAM0_GCLK0_FREQ_HZ /			       \
 			DT_INST_PROP(inst, prescaler),			       \
+		.num_pins = ATMEL_SAM0_DT_INST_NUM_PINS(inst),		       \
+		.pins = ATMEL_SAM0_DT_INST_PINS(inst),			       \
 		PWM_SAM0_INIT_CLOCKS(inst),				       \
 	};								       \
 									       \
