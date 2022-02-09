@@ -335,6 +335,15 @@ static int check_buffer_size(const struct adc_sequence *sequence,
 	return 0;
 }
 
+static int _count_set_bits(unsigned int n) {
+	// Count the total bits set in n
+	uint8_t count = 0;
+	for (count = 0; n; n >>= 1) {
+		count += n & 1;
+	}
+	return count;
+}
+
 static int start_read(const struct device *dev,
 		      const struct adc_sequence *sequence)
 {
@@ -394,7 +403,7 @@ static int start_read(const struct device *dev,
 
 	wait_synchronization(adc);
 
-	if (sequence->channels != 1U) {
+	if (_count_set_bits(sequence->channels) != 1U) {
 		LOG_ERR("Channel scanning is not supported");
 		return -ENOTSUP;
 	}
