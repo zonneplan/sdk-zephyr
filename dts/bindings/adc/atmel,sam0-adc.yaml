@@ -49,9 +49,9 @@ properties:
         PIO pin configuration for adc pin and channel.  We expect that
         the phandles will reference pinctrl nodes.  These nodes will
         have a nodelabel that matches the Atmel SoC HAL defines and
-        be of the form p<port><pin><periph>_<chan>_<signal>.
+        be of the form p<port><pin><periph>_<inst>_<chan>.
 
-        For example the I2C0 on SAMD21 would be
+        For example the ADC on SAMD21 would be
            pinctrl-0 = <&pa9d_adc_chan19>;
 
       required: true
