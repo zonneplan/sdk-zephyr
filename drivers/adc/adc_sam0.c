@@ -394,7 +394,7 @@ static int start_read(const struct device *dev,
 
 	wait_synchronization(adc);
 
-	if (sequence->channels != 1U) {
+	if (!is_power_of_two(sequence->channels)) {
 		LOG_ERR("Channel scanning is not supported");
 		return -ENOTSUP;
 	}
