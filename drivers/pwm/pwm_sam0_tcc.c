@@ -93,6 +93,7 @@ static int pwm_sam0_pin_set(const struct device *dev, uint32_t ch,
 	if (invert != inverted) {
 		regs->CTRLA.bit.ENABLE = 0;
 		wait_synchronization(regs);
+
 		regs->DRVCTRL.vec.INVEN ^= invert_mask;
 		regs->CTRLA.bit.ENABLE = 1;
 		wait_synchronization(regs);
