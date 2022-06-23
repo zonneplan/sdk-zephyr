@@ -86,8 +86,8 @@ static int pwm_sam0_pin_set(const struct device *dev, uint32_t ch,
 	regs->PERBUF.reg = TCC_PERBUF_PERBUF(period_cycles);
 #else
 	/* SAMD21 naming */
-	regs->CCB[ch].reg = TCC_CCB_CCB(pulse_cycles);
-	regs->PERB.reg = TCC_PERB_PERB(period_cycles);
+	regs->CC[ch].reg = TCC_CCB_CCB(pulse_cycles);
+	regs->PER.reg = TCC_PERB_PERB(period_cycles);
 #endif
 
 	if (invert != inverted) {
