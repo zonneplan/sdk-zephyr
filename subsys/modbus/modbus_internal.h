@@ -88,7 +88,8 @@ struct modbus_serial_config {
 	/* RTU timeout (maximum inter-frame delay) */
 	uint32_t rtu_timeout;
 	/* Pointer to current position in buffer */
-	uint8_t *uart_buf_ptr;
+	uint8_t *uart_rx_buf_ptr;
+	uint8_t *uart_tx_buf_ptr;
 	/* Pointer to driver enable (DE) pin config */
 	struct gpio_dt_spec *de;
 	/* Pointer to receiver enable (nRE) pin config */
@@ -96,9 +97,11 @@ struct modbus_serial_config {
 	/* RTU timer to detect frame end point */
 	struct k_timer rtu_timer;
 	/* Number of bytes received or to send */
-	uint16_t uart_buf_ctr;
+	uint16_t uart_rx_buf_ctr;
+	uint16_t uart_tx_buf_ctr;
 	/* Storage of received characters or characters to send */
-	uint8_t uart_buf[CONFIG_MODBUS_BUFFER_SIZE];
+	uint8_t uart_tx_buf[CONFIG_MODBUS_BUFFER_SIZE];
+	uint8_t uart_rx_buf[CONFIG_MODBUS_BUFFER_SIZE];
 };
 
 #define MODBUS_STATE_CONFIGURED		0

@@ -35,7 +35,6 @@ static void modbus_serial_tx_on(struct modbus_context *ctx)
 	if (cfg->de != NULL) {
 		gpio_pin_set(cfg->de->port, cfg->de->pin, 1);
 	}
-
 	uart_irq_tx_enable(cfg->dev);
 }
 
@@ -278,26 +277,26 @@ static int modbus_rtu_rx_adu(struct modbus_context *ctx)
 	uint8_t *data_ptr;
 
 	/* Is the message long enough? */
-	if ((cfg->uart_buf_ctr < MODBUS_RTU_MIN_MSG_SIZE) ||
-	    (cfg->uart_buf_ctr > CONFIG_MODBUS_BUFFER_SIZE)) {
+	if ((cfg->uart_rx_buf_ctr < MODBUS_RTU_MIN_MSG_SIZE) ||
+	    (cfg->uart_rx_buf_ctr > CONFIG_MODBUS_BUFFER_SIZE)) {
 		LOG_WRN("Frame length error");
 		return -EMSGSIZE;
 	}
 
-	ctx->rx_adu.unit_id = cfg->uart_buf[0];
-	ctx->rx_adu.fc = cfg->uart_buf[1];
-	data_ptr = &cfg->uart_buf[2];
+	ctx->rx_adu.unit_id = cfg->uart_rx_buf[0];
+	ctx->rx_adu.fc = cfg->uart_rx_buf[1];
+	data_ptr = &cfg->uart_rx_buf[2];
 	/* Payload length without node address, function code, and CRC */
-	ctx->rx_adu.length = cfg->uart_buf_ctr - 4;
+	ctx->rx_adu.length = cfg->uart_rx_buf_ctr - 4;
 	/* CRC index */
-	crc_idx = cfg->uart_buf_ctr - sizeof(uint16_t);
+	crc_idx = cfg->uart_rx_buf_ctr - sizeof(uint16_t);
 
 	memcpy(ctx->rx_adu.data, data_ptr, ctx->rx_adu.length);
 
-	ctx->rx_adu.crc = sys_get_le16(&cfg->uart_buf[crc_idx]);
+	ctx->rx_adu.crc = sys_get_le16(&cfg->uart_rx_buf[crc_idx]);
 	/* Calculate CRC over address, function code, and payload */
-	calc_crc = modbus_rtu_crc16(&cfg->uart_buf[0],
-				    cfg->uart_buf_ctr - sizeof(ctx->rx_adu.crc));
+	calc_crc = modbus_rtu_crc16(&cfg->uart_rx_buf[0],
+				    cfg->uart_rx_buf_ctr - sizeof(ctx->rx_adu.crc));
 
 	if (ctx->rx_adu.crc != calc_crc) {
 		LOG_WRN("Calculated CRC does not match received CRC");
@@ -313,23 +312,23 @@ static void rtu_tx_adu(struct modbus_context *ctx)
 	uint16_t tx_bytes = 0;
 	uint8_t *data_ptr;
 
-	cfg->uart_buf[0] = ctx->tx_adu.unit_id;
-	cfg->uart_buf[1] = ctx->tx_adu.fc;
+	cfg->uart_tx_buf[0] = ctx->tx_adu.unit_id;
+	cfg->uart_tx_buf[1] = ctx->tx_adu.fc;
 	tx_bytes = 2 + ctx->tx_adu.length;
-	data_ptr = &cfg->uart_buf[2];
+	data_ptr = &cfg->uart_tx_buf[2];
 
 	memcpy(data_ptr, ctx->tx_adu.data, ctx->tx_adu.length);
 
-	ctx->tx_adu.crc = modbus_rtu_crc16(&cfg->uart_buf[0],
+	ctx->tx_adu.crc = modbus_rtu_crc16(&cfg->uart_tx_buf[0],
 					     ctx->tx_adu.length + 2);
 	sys_put_le16(ctx->tx_adu.crc,
-		     &cfg->uart_buf[ctx->tx_adu.length + 2]);
+		     &cfg->uart_tx_buf[ctx->tx_adu.length + 2]);
 	tx_bytes += 2;
 
-	cfg->uart_buf_ctr = tx_bytes;
-	cfg->uart_buf_ptr = &cfg->uart_buf[0];
+	cfg->uart_tx_buf_ctr = tx_bytes;
+	cfg->uart_tx_buf_ptr = &cfg->uart_tx_buf[0];
 
-	LOG_HEXDUMP_DBG(cfg->uart_buf, cfg->uart_buf_ctr, "uart_buf");
+	LOG_HEXDUMP_DBG(cfg->uart_tx_buf, cfg->uart_tx_buf_ctr, "uart_buf");
 	LOG_DBG("Start frame transmission");
 	modbus_serial_rx_off(ctx);
 	modbus_serial_tx_on(ctx);
@@ -354,13 +353,13 @@ static void cb_handler_rx(struct modbus_context *ctx)
 
 		if (c == MODBUS_ASCII_START_FRAME_CHAR) {
 			/* Restart a new frame */
-			cfg->uart_buf_ptr = &cfg->uart_buf[0];
-			cfg->uart_buf_ctr = 0;
+			cfg->uart_rx_buf_ptr = &cfg->uart_rx_buf[0];
+			cfg->uart_rx_buf_ctr = 0;
 		}
 
-		if (cfg->uart_buf_ctr < CONFIG_MODBUS_BUFFER_SIZE) {
-			*cfg->uart_buf_ptr++ = c;
-			cfg->uart_buf_ctr++;
+		if (cfg->uart_rx_buf_ctr < CONFIG_MODBUS_BUFFER_SIZE) {
+			*cfg->uart_rx_buf_ptr++ = c;
+			cfg->uart_rx_buf_ctr++;
 		}
 
 		if (c == MODBUS_ASCII_END_FRAME_CHAR2) {
@@ -374,12 +373,13 @@ static void cb_handler_rx(struct modbus_context *ctx)
 		k_timer_start(&cfg->rtu_timer,
 			      K_USEC(cfg->rtu_timeout), K_NO_WAIT);
 
-		n = uart_fifo_read(cfg->dev, cfg->uart_buf_ptr,
+		n = uart_fifo_read(cfg->dev, cfg->uart_rx_buf_ptr,
 				   (CONFIG_MODBUS_BUFFER_SIZE -
-				    cfg->uart_buf_ctr));
-
-		cfg->uart_buf_ptr += n;
-		cfg->uart_buf_ctr += n;
+				    cfg->uart_rx_buf_ctr));
+		if (n > 0) {
+			cfg->uart_rx_buf_ptr += n;
+			cfg->uart_rx_buf_ctr += n;
+		}
 	}
 }
 
@@ -388,11 +388,13 @@ static void cb_handler_tx(struct modbus_context *ctx)
 	struct modbus_serial_config *cfg = ctx->cfg;
 	int n;
 
-	if (cfg->uart_buf_ctr > 0) {
-		n = uart_fifo_fill(cfg->dev, cfg->uart_buf_ptr,
-				   cfg->uart_buf_ctr);
-		cfg->uart_buf_ctr -= n;
-		cfg->uart_buf_ptr += n;
+	if (cfg->uart_tx_buf_ctr > 0 && uart_irq_tx_ready(cfg->dev) == 1) {
+		n = uart_fifo_fill(cfg->dev, cfg->uart_tx_buf_ptr,
+				   cfg->uart_tx_buf_ctr);
+		if (n > 0) {
+			cfg->uart_tx_buf_ctr -= n;
+			cfg->uart_tx_buf_ptr += n;
+		}
 		return;
 	}
 
@@ -402,7 +404,8 @@ static void cb_handler_tx(struct modbus_context *ctx)
 	 */
 	if (uart_irq_tx_complete(cfg->dev)) {
 		/* Disable transmission */
-		cfg->uart_buf_ptr = &cfg->uart_buf[0];
+		cfg->uart_tx_buf_ptr = &cfg->uart_tx_buf[0];
+		cfg->uart_tx_buf_ctr = 0;
 		modbus_serial_tx_off(ctx);
 		modbus_serial_rx_on(ctx);
 	}
@@ -506,8 +509,8 @@ int modbus_serial_rx_adu(struct modbus_context *ctx)
 		return -ENOTSUP;
 	}
 
-	cfg->uart_buf_ctr = 0;
-	cfg->uart_buf_ptr = &cfg->uart_buf[0];
+	cfg->uart_rx_buf_ctr = 0;
+	cfg->uart_rx_buf_ptr = &cfg->uart_rx_buf[0];
 
 	return rc;
 }
@@ -594,8 +597,10 @@ int modbus_serial_init(struct modbus_context *ctx,
 		return -EIO;
 	}
 
-	cfg->uart_buf_ctr = 0;
-	cfg->uart_buf_ptr = &cfg->uart_buf[0];
+	cfg->uart_rx_buf_ctr = 0;
+	cfg->uart_rx_buf_ptr = &cfg->uart_rx_buf[0];
+	cfg->uart_tx_buf_ctr = 0;
+	cfg->uart_tx_buf_ptr = &cfg->uart_tx_buf[0];
 
 	uart_irq_callback_user_data_set(cfg->dev, uart_cb_handler, ctx);
 	k_timer_init(&cfg->rtu_timer, rtu_tmr_handler, NULL);
