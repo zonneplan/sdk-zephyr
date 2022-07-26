@@ -26,7 +26,7 @@ DEFAULT_OPENOCD_TARGET_HANDLE = "_TARGETNAME"
 class OpenOcdBinaryRunner(ZephyrBinaryRunner):
     '''Runner front-end for openocd.'''
 
-    def __init__(self, cfg, pre_init=None, reset_halt_cmd=DEFAULT_OPENOCD_RESET_HALT_CMD,
+    def __init__(self, cfg, pre_config=None, pre_init=None, reset_halt_cmd=DEFAULT_OPENOCD_RESET_HALT_CMD,
                  pre_load=None, load_cmd=None, verify_cmd=None, post_verify=None,
                  do_verify=False, do_verify_only=False,
                  tui=None, config=None, serial=None, use_elf=None,
@@ -82,6 +82,7 @@ class OpenOcdBinaryRunner(ZephyrBinaryRunner):
         self.targets_arg = [] if no_targets else ['-c targets']
         self.serial = ['-c set _ZEPHYR_BOARD_SERIAL ' + serial] if serial else []
         self.use_elf = use_elf
+        self.pre_config = pre_config or []
         self.gdb_init = gdb_init
         self.load_arg = [] if no_load else ['-ex', 'load']
         self.target_handle = target_handle
@@ -92,6 +93,9 @@ class OpenOcdBinaryRunner(ZephyrBinaryRunner):
 
     @classmethod
     def do_add_parser(cls, parser):
+        parser.add_argument('--cmd-pre-config', action='append',
+                            help='''command to run before loading config;
+                            may be given multiple times''')
         parser.add_argument('--config', action='append',
                             help='''if given, override default config file;
                             may be given multiple times''')
@@ -151,7 +155,7 @@ class OpenOcdBinaryRunner(ZephyrBinaryRunner):
     @classmethod
     def do_create(cls, cfg, args):
         return OpenOcdBinaryRunner(
-            cfg,
+            cfg, pre_config=args.cmd_pre_config,
             pre_init=args.cmd_pre_init, reset_halt_cmd=args.cmd_reset_halt,
             pre_load=args.cmd_pre_load, load_cmd=args.cmd_load,
             verify_cmd=args.cmd_verify, post_verify=args.cmd_post_verify,
@@ -209,10 +213,15 @@ class OpenOcdBinaryRunner(ZephyrBinaryRunner):
                 'elftools missing; please "pip3 install elftools"')
 
         self.cfg_cmd = []
+        for i in self.pre_config:
+            self.cfg_cmd.append('-c')
+            self.cfg_cmd.append(i)
         if self.openocd_config is not None:
             for i in self.openocd_config:
                 self.cfg_cmd.append('-f')
                 self.cfg_cmd.append(i)
+
+        print("Command:",self.cfg_cmd)
 
         if command == 'flash' and self.use_elf:
             self.do_flash_elf(**kwargs)
