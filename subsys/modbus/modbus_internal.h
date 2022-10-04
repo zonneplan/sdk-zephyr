@@ -80,84 +80,8 @@
 /* Modbus ADU constants */
 #define MODBUS_ADU_PROTO_ID			0x0000
 
-struct modbus_serial_config {
-	/* UART device name */
-	const char *dev_name;
-	/* UART device */
-	const struct device *dev;
-	/* RTU timeout (maximum inter-frame delay) */
-	uint32_t rtu_timeout;
-	/* Pointer to current position in buffer */
-	uint8_t *uart_buf_ptr;
-	/* Pointer to driver enable (DE) pin config */
-	struct gpio_dt_spec *de;
-	/* Pointer to receiver enable (nRE) pin config */
-	struct gpio_dt_spec *re;
-	/* RTU timer to detect frame end point */
-	struct k_timer rtu_timer;
-	/* Number of bytes received or to send */
-	uint16_t uart_buf_ctr;
-	/* Storage of received characters or characters to send */
-	uint8_t uart_buf[CONFIG_MODBUS_BUFFER_SIZE];
-};
 
 #define MODBUS_STATE_CONFIGURED		0
-
-struct modbus_context {
-	/* Interface name */
-	const char *iface_name;
-	union {
-		/* Serial line configuration */
-		struct modbus_serial_config *cfg;
-		/* RAW TX callback */
-		modbus_raw_cb_t raw_tx_cb;
-	};
-	/* MODBUS mode */
-	enum modbus_mode mode;
-	/* True if interface is configured as client */
-	bool client;
-	/* Amount of time client is willing to wait for response from server */
-	uint32_t rxwait_to;
-	/* Pointer to user server callbacks */
-	struct modbus_user_callbacks *mbs_user_cb;
-	/* Interface state */
-	atomic_t state;
-
-	/* Client's mutually exclusive access */
-	struct k_mutex iface_lock;
-	/* Wait for response semaphore */
-	struct k_sem client_wait_sem;
-	/* Server work item */
-	struct k_work server_work;
-	/* Received frame */
-	struct modbus_adu rx_adu;
-	/* Frame to transmit */
-	struct modbus_adu tx_adu;
-
-	/* Records error from frame reception, e.g. CRC error */
-	int rx_adu_err;
-
-#ifdef CONFIG_MODBUS_FC08_DIAGNOSTIC
-	uint16_t mbs_msg_ctr;
-	uint16_t mbs_crc_err_ctr;
-	uint16_t mbs_except_ctr;
-	uint16_t mbs_server_msg_ctr;
-	uint16_t mbs_noresp_ctr;
-#endif
-	/* Unit ID */
-	uint8_t unit_id;
-
-};
-
-/**
- * @brief Get Modbus interface context.
- *
- * @param ctx        Modbus interface context
- *
- * @retval           Pointer to interface context or NULL
- *                   if interface not available or not configured;
- */
-struct modbus_context *modbus_get_context(const uint8_t iface);
 
 /**
  * @brief Get Modbus interface index.

@@ -41,6 +41,9 @@ extern "C" {
 /** Length of MBAP Header plus function code */
 #define MODBUS_MBAP_AND_FC_LENGTH	(MODBUS_MBAP_LENGTH + 1)
 
+// Forward declare
+struct modbus_context;
+
 /**
  * @brief Frame struct used internally and for raw ADU support.
  */
@@ -62,317 +65,6 @@ struct modbus_adu {
 };
 
 /**
- * @brief Coil read (FC01)
- *
- * Sends a Modbus message to read the status of coils from a server.
- *
- * @param iface      Modbus interface index
- * @param unit_id    Modbus unit ID of the server
- * @param start_addr Coil starting address
- * @param coil_tbl   Pointer to an array of bytes containing the value
- *                   of the coils read.
- *                   The format is:
- *
- *                                       MSB                               LSB
- *                                       B7   B6   B5   B4   B3   B2   B1   B0
- *                                       -------------------------------------
- *                       coil_tbl[0]     #8   #7                            #1
- *                       coil_tbl[1]     #16  #15                           #9
- *                            :
- *                            :
- *
- *                   Note that the array that will be receiving the coil
- *                   values must be greater than or equal to:
- *                   (num_coils - 1) / 8 + 1
- * @param num_coils  Quantity of coils to read
- *
- * @retval           0 If the function was successful
- */
-int modbus_read_coils(const int iface,
-		      const uint8_t unit_id,
-		      const uint16_t start_addr,
-		      uint8_t *const coil_tbl,
-		      const uint16_t num_coils);
-
-/**
- * @brief Read discrete inputs (FC02)
- *
- * Sends a Modbus message to read the status of discrete inputs from
- * a server.
- *
- * @param iface      Modbus interface index
- * @param unit_id    Modbus unit ID of the server
- * @param start_addr Discrete input starting address
- * @param di_tbl     Pointer to an array that will receive the state
- *                   of the discrete inputs.
- *                   The format of the array is as follows:
- *
- *                                     MSB                               LSB
- *                                     B7   B6   B5   B4   B3   B2   B1   B0
- *                                     -------------------------------------
- *                       di_tbl[0]     #8   #7                            #1
- *                       di_tbl[1]     #16  #15                           #9
- *                            :
- *                            :
- *
- *                   Note that the array that will be receiving the discrete
- *                   input values must be greater than or equal to:
- *                        (num_di - 1) / 8 + 1
- * @param num_di     Quantity of discrete inputs to read
- *
- * @retval           0 If the function was successful
- */
-int modbus_read_dinputs(const int iface,
-			const uint8_t unit_id,
-			const uint16_t start_addr,
-			uint8_t *const di_tbl,
-			const uint16_t num_di);
-
-/**
- * @brief Read holding registers (FC03)
- *
- * Sends a Modbus message to read the value of holding registers
- * from a server.
- *
- * @param iface      Modbus interface index
- * @param unit_id    Modbus unit ID of the server
- * @param start_addr Register starting address
- * @param reg_buf    Is a pointer to an array that will receive
- *                   the current values of the holding registers from
- *                   the server.  The array pointed to by 'reg_buf' needs
- *                   to be able to hold at least 'num_regs' entries.
- * @param num_regs   Quantity of registers to read
- *
- * @retval           0 If the function was successful
- */
-int modbus_read_holding_regs(const int iface,
-			     const uint8_t unit_id,
-			     const uint16_t start_addr,
-			     uint16_t *const reg_buf,
-			     const uint16_t num_regs);
-
-/**
- * @brief Read input registers (FC04)
- *
- * Sends a Modbus message to read the value of input registers from
- * a server.
- *
- * @param iface      Modbus interface index
- * @param unit_id    Modbus unit ID of the server
- * @param start_addr Register starting address
- * @param reg_buf    Is a pointer to an array that will receive
- *                   the current value of the holding registers
- *                   from the server.  The array pointed to by 'reg_buf'
- *                   needs to be able to hold at least 'num_regs' entries.
- * @param num_regs   Quantity of registers to read
- *
- * @retval           0 If the function was successful
- */
-int modbus_read_input_regs(const int iface,
-			   const uint8_t unit_id,
-			   const uint16_t start_addr,
-			   uint16_t *const reg_buf,
-			   const uint16_t num_regs);
-
-/**
- * @brief Write single coil (FC05)
- *
- * Sends a Modbus message to write the value of single coil to a server.
- *
- * @param iface      Modbus interface index
- * @param unit_id    Modbus unit ID of the server
- * @param coil_addr  Coils starting address
- * @param coil_state Is the desired state of the coil
- *
- * @retval           0 If the function was successful
- */
-int modbus_write_coil(const int iface,
-		      const uint8_t unit_id,
-		      const uint16_t coil_addr,
-		      const bool coil_state);
-
-/**
- * @brief Write single holding register (FC06)
- *
- * Sends a Modbus message to write the value of single holding register
- * to a server unit.
- *
- * @param iface      Modbus interface index
- * @param unit_id    Modbus unit ID of the server
- * @param start_addr Coils starting address
- * @param reg_val    Desired value of the holding register
- *
- * @retval           0 If the function was successful
- */
-int modbus_write_holding_reg(const int iface,
-			     const uint8_t unit_id,
-			     const uint16_t start_addr,
-			     const uint16_t reg_val);
-
-/**
- * @brief Read diagnostic (FC08)
- *
- * Sends a Modbus message to perform a diagnostic function of a server unit.
- *
- * @param iface      Modbus interface index
- * @param unit_id    Modbus unit ID of the server
- * @param sfunc      Diagnostic sub-function code
- * @param data       Sub-function data
- * @param data_out   Pointer to the data value
- *
- * @retval           0 If the function was successful
- */
-int modbus_request_diagnostic(const int iface,
-			      const uint8_t unit_id,
-			      const uint16_t sfunc,
-			      const uint16_t data,
-			      uint16_t *const data_out);
-
-/**
- * @brief Write coils (FC15)
- *
- * Sends a Modbus message to write to coils on a server unit.
- *
- * @param iface      Modbus interface index
- * @param unit_id    Modbus unit ID of the server
- * @param start_addr Coils starting address
- * @param coil_tbl   Pointer to an array of bytes containing the value
- *                   of the coils to write.
- *                   The format is:
- *
- *                                       MSB                               LSB
- *                                       B7   B6   B5   B4   B3   B2   B1   B0
- *                                       -------------------------------------
- *                       coil_tbl[0]     #8   #7                            #1
- *                       coil_tbl[1]     #16  #15                           #9
- *                            :
- *                            :
- *
- *                   Note that the array that will be receiving the coil
- *                   values must be greater than or equal to:
- *                   (num_coils - 1) / 8 + 1
- * @param num_coils  Quantity of coils to write
- *
- * @retval           0 If the function was successful
- */
-int modbus_write_coils(const int iface,
-		       const uint8_t unit_id,
-		       const uint16_t start_addr,
-		       uint8_t *const coil_tbl,
-		       const uint16_t num_coils);
-
-/**
- * @brief Write holding registers (FC16)
- *
- * Sends a Modbus message to write to integer holding registers
- * to a server unit.
- *
- * @param iface      Modbus interface index
- * @param unit_id    Modbus unit ID of the server
- * @param start_addr Register starting address
- * @param reg_buf    Is a pointer to an array containing
- *                   the value of the holding registers to write.
- *                   Note that the array containing the register values must
- *                   be greater than or equal to 'num_regs'
- * @param num_regs   Quantity of registers to write
- *
- * @retval           0 If the function was successful
- */
-int modbus_write_holding_regs(const int iface,
-			      const uint8_t unit_id,
-			      const uint16_t start_addr,
-			      uint16_t *const reg_buf,
-			      const uint16_t num_regs);
-
-/**
- * @brief Read floating-point holding registers (FC03)
- *
- * Sends a Modbus message to read the value of floating-point
- * holding registers from a server unit.
- *
- * @param iface      Modbus interface index
- * @param unit_id    Modbus unit ID of the server
- * @param start_addr Register starting address
- * @param reg_buf    Is a pointer to an array that will receive
- *                   the current values of the holding registers from
- *                   the server.  The array pointed to by 'reg_buf' needs
- *                   to be able to hold at least 'num_regs' entries.
- * @param num_regs   Quantity of registers to read
- *
- * @retval           0 If the function was successful
- */
-int modbus_read_holding_regs_fp(const int iface,
-				const uint8_t unit_id,
-				const uint16_t start_addr,
-				float *const reg_buf,
-				const uint16_t num_regs);
-
-/**
- * @brief Write floating-point holding registers (FC16)
- *
- * Sends a Modbus message to write to floating-point holding registers
- * to a server unit.
- *
- * @param iface      Modbus interface index
- * @param unit_id    Modbus unit ID of the server
- * @param start_addr Register starting address
- * @param reg_buf    Is a pointer to an array containing
- *                   the value of the holding registers to write.
- *                   Note that the array containing the register values must
- *                   be greater than or equal to 'num_regs'
- * @param num_regs   Quantity of registers to write
- *
- * @retval           0 If the function was successful
- */
-int modbus_write_holding_regs_fp(const int iface,
-				 const uint8_t unit_id,
-				 const uint16_t start_addr,
-				 float *const reg_buf,
-				 const uint16_t num_regs);
-
-/** Modbus Server User Callback structure */
-struct modbus_user_callbacks {
-	/** Coil read callback */
-	int (*coil_rd)(uint16_t addr, bool *state);
-
-	/** Coil write callback */
-	int (*coil_wr)(uint16_t addr, bool state);
-
-	/** Discrete Input read callback */
-	int (*discrete_input_rd)(uint16_t addr, bool *state);
-
-	/** Input Register read callback */
-	int (*input_reg_rd)(uint16_t addr, uint16_t *reg);
-
-	/** Floating Point Input Register read callback */
-	int (*input_reg_rd_fp)(uint16_t addr, float *reg);
-
-	/** Holding Register read callback */
-	int (*holding_reg_rd)(uint16_t addr, uint16_t *reg);
-
-	/** Holding Register write callback */
-	int (*holding_reg_wr)(uint16_t addr, uint16_t reg);
-
-	/** Floating Point Holding Register read callback */
-	int (*holding_reg_rd_fp)(uint16_t addr, float *reg);
-
-	/** Floating Point Holding Register write callback */
-	int (*holding_reg_wr_fp)(uint16_t addr, float reg);
-};
-
-/**
- * @brief Get Modbus interface index according to interface name
- *
- * If there is more than one interface, it can be used to clearly
- * identify interfaces in the application.
- *
- * @param iface_name Modbus interface name
- *
- * @retval           Modbus interface index or negative error value.
- */
-int modbus_iface_get_by_name(const char *iface_name);
-
-/**
  * @brief ADU raw callback function signature
  *
  * @param iface      Modbus RTU interface index
@@ -380,7 +72,28 @@ int modbus_iface_get_by_name(const char *iface_name);
  *
  * @retval           0 If transfer was successful
  */
-typedef int (*modbus_raw_cb_t)(const int iface, const struct modbus_adu *adu);
+typedef int (*modbus_raw_cb_t)(struct modbus_context *ctx, const struct modbus_adu *adu);
+
+struct modbus_serial_config {
+	/* UART device name */
+	const char *dev_name;
+	/* UART device */
+	const struct device *dev;
+	/* RTU timeout (maximum inter-frame delay) */
+	uint32_t rtu_timeout;
+	/* Pointer to current position in buffer */
+	uint8_t *uart_buf_ptr;
+	/* Pointer to driver enable (DE) pin config */
+	struct gpio_dt_spec *de;
+	/* Pointer to receiver enable (nRE) pin config */
+	struct gpio_dt_spec *re;
+	/* RTU timer to detect frame end point */
+	struct k_timer rtu_timer;
+	/* Number of bytes received or to send */
+	uint16_t uart_buf_ctr;
+	/* Storage of received characters or characters to send */
+	uint8_t uart_buf[CONFIG_MODBUS_BUFFER_SIZE];
+};
 
 /**
  * @brief Modbus interface mode
@@ -440,6 +153,324 @@ struct modbus_iface_param {
 	};
 };
 
+struct modbus_context {
+	/* Interface name */
+	const char *iface_name;
+	union {
+		/* Serial line configuration */
+		struct modbus_serial_config *cfg;
+		/* RAW TX callback */
+		modbus_raw_cb_t raw_tx_cb;
+	};
+	/* MODBUS mode */
+	enum modbus_mode mode;
+	/* True if interface is configured as client */
+	bool client;
+	/* Amount of time client is willing to wait for response from server */
+	uint32_t rxwait_to;
+	/* Pointer to user server callbacks */
+	struct modbus_user_callbacks *mbs_user_cb;
+	/* Interface state */
+	atomic_t state;
+
+	/* Client's mutually exclusive access */
+	struct k_mutex iface_lock;
+	/* Wait for response semaphore */
+	struct k_sem client_wait_sem;
+	/* Server work item */
+	struct k_work server_work;
+	/* Received frame */
+	struct modbus_adu rx_adu;
+	/* Frame to transmit */
+	struct modbus_adu tx_adu;
+
+	/* Records error from frame reception, e.g. CRC error */
+	int rx_adu_err;
+
+#ifdef CONFIG_MODBUS_FC08_DIAGNOSTIC
+	uint16_t mbs_msg_ctr;
+	uint16_t mbs_crc_err_ctr;
+	uint16_t mbs_except_ctr;
+	uint16_t mbs_server_msg_ctr;
+	uint16_t mbs_noresp_ctr;
+#endif
+	/* Unit ID */
+	uint8_t unit_id;
+};
+
+/**
+ * @brief Coil read (FC01)
+ *
+ * Sends a Modbus message to read the status of coils from a server.
+ *
+ * @param iface      Modbus interface index
+ * @param unit_id    Modbus unit ID of the server
+ * @param start_addr Coil starting address
+ * @param coil_tbl   Pointer to an array of bytes containing the value
+ *                   of the coils read.
+ *                   The format is:
+ *
+ *                                       MSB                               LSB
+ *                                       B7   B6   B5   B4   B3   B2   B1   B0
+ *                                       -------------------------------------
+ *                       coil_tbl[0]     #8   #7                            #1
+ *                       coil_tbl[1]     #16  #15                           #9
+ *                            :
+ *                            :
+ *
+ *                   Note that the array that will be receiving the coil
+ *                   values must be greater than or equal to:
+ *                   (num_coils - 1) / 8 + 1
+ * @param num_coils  Quantity of coils to read
+ *
+ * @retval           0 If the function was successful
+ */
+int modbus_read_coils(struct modbus_context *ctx, const uint8_t unit_id, const uint16_t start_addr,
+		      uint8_t *const coil_tbl, const uint16_t num_coils);
+
+/**
+ * @brief Read discrete inputs (FC02)
+ *
+ * Sends a Modbus message to read the status of discrete inputs from
+ * a server.
+ *
+ * @param iface      Modbus interface index
+ * @param unit_id    Modbus unit ID of the server
+ * @param start_addr Discrete input starting address
+ * @param di_tbl     Pointer to an array that will receive the state
+ *                   of the discrete inputs.
+ *                   The format of the array is as follows:
+ *
+ *                                     MSB                               LSB
+ *                                     B7   B6   B5   B4   B3   B2   B1   B0
+ *                                     -------------------------------------
+ *                       di_tbl[0]     #8   #7                            #1
+ *                       di_tbl[1]     #16  #15                           #9
+ *                            :
+ *                            :
+ *
+ *                   Note that the array that will be receiving the discrete
+ *                   input values must be greater than or equal to:
+ *                        (num_di - 1) / 8 + 1
+ * @param num_di     Quantity of discrete inputs to read
+ *
+ * @retval           0 If the function was successful
+ */
+int modbus_read_dinputs(struct modbus_context *ctx, const uint8_t unit_id,
+			const uint16_t start_addr, uint8_t *const di_tbl, const uint16_t num_di);
+
+/**
+ * @brief Read holding registers (FC03)
+ *
+ * Sends a Modbus message to read the value of holding registers
+ * from a server.
+ *
+ * @param iface      Modbus interface index
+ * @param unit_id    Modbus unit ID of the server
+ * @param start_addr Register starting address
+ * @param reg_buf    Is a pointer to an array that will receive
+ *                   the current values of the holding registers from
+ *                   the server.  The array pointed to by 'reg_buf' needs
+ *                   to be able to hold at least 'num_regs' entries.
+ * @param num_regs   Quantity of registers to read
+ *
+ * @retval           0 If the function was successful
+ */
+int modbus_read_holding_regs(struct modbus_context *ctx, const uint8_t unit_id,
+			     const uint16_t start_addr, uint16_t *const reg_buf,
+			     const uint16_t num_regs);
+
+/**
+ * @brief Read input registers (FC04)
+ *
+ * Sends a Modbus message to read the value of input registers from
+ * a server.
+ *
+ * @param iface      Modbus interface index
+ * @param unit_id    Modbus unit ID of the server
+ * @param start_addr Register starting address
+ * @param reg_buf    Is a pointer to an array that will receive
+ *                   the current value of the holding registers
+ *                   from the server.  The array pointed to by 'reg_buf'
+ *                   needs to be able to hold at least 'num_regs' entries.
+ * @param num_regs   Quantity of registers to read
+ *
+ * @retval           0 If the function was successful
+ */
+int modbus_read_input_regs(struct modbus_context *ctx, const uint8_t unit_id,
+			   const uint16_t start_addr, uint16_t *const reg_buf,
+			   const uint16_t num_regs);
+
+/**
+ * @brief Write single coil (FC05)
+ *
+ * Sends a Modbus message to write the value of single coil to a server.
+ *
+ * @param iface      Modbus interface index
+ * @param unit_id    Modbus unit ID of the server
+ * @param coil_addr  Coils starting address
+ * @param coil_state Is the desired state of the coil
+ *
+ * @retval           0 If the function was successful
+ */
+int modbus_write_coil(struct modbus_context *ctx, const uint8_t unit_id, const uint16_t coil_addr,
+		      const bool coil_state);
+
+/**
+ * @brief Write single holding register (FC06)
+ *
+ * Sends a Modbus message to write the value of single holding register
+ * to a server unit.
+ *
+ * @param iface      Modbus interface index
+ * @param unit_id    Modbus unit ID of the server
+ * @param start_addr Coils starting address
+ * @param reg_val    Desired value of the holding register
+ *
+ * @retval           0 If the function was successful
+ */
+int modbus_write_holding_reg(struct modbus_context *ctx, const uint8_t unit_id,
+			     const uint16_t start_addr, const uint16_t reg_val);
+
+/**
+ * @brief Read diagnostic (FC08)
+ *
+ * Sends a Modbus message to perform a diagnostic function of a server unit.
+ *
+ * @param iface      Modbus interface index
+ * @param unit_id    Modbus unit ID of the server
+ * @param sfunc      Diagnostic sub-function code
+ * @param data       Sub-function data
+ * @param data_out   Pointer to the data value
+ *
+ * @retval           0 If the function was successful
+ */
+int modbus_request_diagnostic(struct modbus_context *ctx, const uint8_t unit_id,
+			      const uint16_t sfunc, const uint16_t data, uint16_t *const data_out);
+
+/**
+ * @brief Write coils (FC15)
+ *
+ * Sends a Modbus message to write to coils on a server unit.
+ *
+ * @param iface      Modbus interface index
+ * @param unit_id    Modbus unit ID of the server
+ * @param start_addr Coils starting address
+ * @param coil_tbl   Pointer to an array of bytes containing the value
+ *                   of the coils to write.
+ *                   The format is:
+ *
+ *                                       MSB                               LSB
+ *                                       B7   B6   B5   B4   B3   B2   B1   B0
+ *                                       -------------------------------------
+ *                       coil_tbl[0]     #8   #7                            #1
+ *                       coil_tbl[1]     #16  #15                           #9
+ *                            :
+ *                            :
+ *
+ *                   Note that the array that will be receiving the coil
+ *                   values must be greater than or equal to:
+ *                   (num_coils - 1) / 8 + 1
+ * @param num_coils  Quantity of coils to write
+ *
+ * @retval           0 If the function was successful
+ */
+int modbus_write_coils(struct modbus_context *ctx, const uint8_t unit_id, const uint16_t start_addr,
+		       uint8_t *const coil_tbl, const uint16_t num_coils);
+
+/**
+ * @brief Write holding registers (FC16)
+ *
+ * Sends a Modbus message to write to integer holding registers
+ * to a server unit.
+ *
+ * @param iface      Modbus interface index
+ * @param unit_id    Modbus unit ID of the server
+ * @param start_addr Register starting address
+ * @param reg_buf    Is a pointer to an array containing
+ *                   the value of the holding registers to write.
+ *                   Note that the array containing the register values must
+ *                   be greater than or equal to 'num_regs'
+ * @param num_regs   Quantity of registers to write
+ *
+ * @retval           0 If the function was successful
+ */
+int modbus_write_holding_regs(struct modbus_context *ctx, const uint8_t unit_id,
+			      const uint16_t start_addr, uint16_t *const reg_buf,
+			      const uint16_t num_regs);
+
+/**
+ * @brief Read floating-point holding registers (FC03)
+ *
+ * Sends a Modbus message to read the value of floating-point
+ * holding registers from a server unit.
+ *
+ * @param iface      Modbus interface index
+ * @param unit_id    Modbus unit ID of the server
+ * @param start_addr Register starting address
+ * @param reg_buf    Is a pointer to an array that will receive
+ *                   the current values of the holding registers from
+ *                   the server.  The array pointed to by 'reg_buf' needs
+ *                   to be able to hold at least 'num_regs' entries.
+ * @param num_regs   Quantity of registers to read
+ *
+ * @retval           0 If the function was successful
+ */
+int modbus_read_holding_regs_fp(struct modbus_context *ctx, const uint8_t unit_id,
+				const uint16_t start_addr, float *const reg_buf,
+				const uint16_t num_regs);
+
+/**
+ * @brief Write floating-point holding registers (FC16)
+ *
+ * Sends a Modbus message to write to floating-point holding registers
+ * to a server unit.
+ *
+ * @param iface      Modbus interface index
+ * @param unit_id    Modbus unit ID of the server
+ * @param start_addr Register starting address
+ * @param reg_buf    Is a pointer to an array containing
+ *                   the value of the holding registers to write.
+ *                   Note that the array containing the register values must
+ *                   be greater than or equal to 'num_regs'
+ * @param num_regs   Quantity of registers to write
+ *
+ * @retval           0 If the function was successful
+ */
+int modbus_write_holding_regs_fp(struct modbus_context *ctx, const uint8_t unit_id,
+				 const uint16_t start_addr, float *const reg_buf,
+				 const uint16_t num_regs);
+
+/** Modbus Server User Callback structure */
+struct modbus_user_callbacks {
+	/** Coil read callback */
+	int (*coil_rd)(struct modbus_context *ctx, uint16_t addr, bool *state);
+
+	/** Coil write callback */
+	int (*coil_wr)(struct modbus_context *ctx, uint16_t addr, bool state);
+
+	/** Discrete Input read callback */
+	int (*discrete_input_rd)(struct modbus_context *ctx, uint16_t addr, bool *state);
+
+	/** Input Register read callback */
+	int (*input_reg_rd)(struct modbus_context *ctx, uint16_t addr, uint16_t *reg);
+
+	/** Floating Point Input Register read callback */
+	int (*input_reg_rd_fp)(struct modbus_context *ctx, uint16_t addr, float *reg);
+
+	/** Holding Register read callback */
+	int (*holding_reg_rd)(struct modbus_context *ctx, uint16_t addr, uint16_t *reg);
+
+	/** Holding Register write callback */
+	int (*holding_reg_wr)(struct modbus_context *ctx, uint16_t addr, uint16_t reg);
+
+	/** Floating Point Holding Register read callback */
+	int (*holding_reg_rd_fp)(struct modbus_context *ctx, uint16_t addr, float *reg);
+
+	/** Floating Point Holding Register write callback */
+	int (*holding_reg_wr_fp)(struct modbus_context *ctx, uint16_t addr, float reg);
+};
+
 /**
  * @brief Configure Modbus Interface as raw ADU server
  *
@@ -448,7 +479,7 @@ struct modbus_iface_param {
  *
  * @retval           0 If the function was successful
  */
-int modbus_init_server(const int iface, struct modbus_iface_param param);
+int modbus_init_server(struct modbus_context *ctx, struct modbus_iface_param param);
 
 /**
  * @brief Configure Modbus Interface as raw ADU client
@@ -458,7 +489,7 @@ int modbus_init_server(const int iface, struct modbus_iface_param param);
  *
  * @retval           0 If the function was successful
  */
-int modbus_init_client(const int iface, struct modbus_iface_param param);
+int modbus_init_client(struct modbus_context *ctx, struct modbus_iface_param param);
 
 /**
  * @brief Disable Modbus Interface
@@ -469,7 +500,7 @@ int modbus_init_client(const int iface, struct modbus_iface_param param);
  *
  * @retval           0 If the function was successful
  */
-int modbus_disable(const uint8_t iface);
+int modbus_disable(struct modbus_context *ctx);
 
 /**
  * @brief Submit raw ADU
@@ -479,7 +510,7 @@ int modbus_disable(const uint8_t iface);
  *
  * @retval           0 If transfer was successful
  */
-int modbus_raw_submit_rx(const int iface, const struct modbus_adu *adu);
+int modbus_raw_submit_rx(struct modbus_context *ctx, const struct modbus_adu *adu);
 
 /**
  * @brief Put MBAP header into a buffer
@@ -523,7 +554,7 @@ void modbus_raw_set_server_failure(struct modbus_adu *adu);
  *
  * @retval           0 If transfer was successful
  */
-int modbus_raw_backend_txn(const int iface, struct modbus_adu *adu);
+int modbus_raw_backend_txn(struct modbus_context *ctx, struct modbus_adu *adu);
 
 #ifdef __cplusplus
 }

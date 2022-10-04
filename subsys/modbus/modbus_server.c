@@ -158,7 +158,7 @@ static bool mbs_fc01_coil_read(struct modbus_context *ctx)
 	/* Loop through each coil requested. */
 	while (coil_cntr < coil_qty) {
 
-		err = ctx->mbs_user_cb->coil_rd(coil_addr, &coil_state);
+		err = ctx->mbs_user_cb->coil_rd(ctx, coil_addr, &coil_state);
 		if (err != 0) {
 			LOG_INF("Coil address not supported");
 			mbs_exception_rsp(ctx, MODBUS_EXC_ILLEGAL_DATA_ADDR);
@@ -259,7 +259,7 @@ static bool mbs_fc02_di_read(struct modbus_context *ctx)
 	/* Loop through each DI requested. */
 	while (di_cntr < di_qty) {
 
-		err = ctx->mbs_user_cb->discrete_input_rd(di_addr, &di_state);
+		err = ctx->mbs_user_cb->discrete_input_rd(ctx, di_addr, &di_state);
 		if (err != 0) {
 			LOG_INF("Discrete input address not supported");
 			mbs_exception_rsp(ctx, MODBUS_EXC_ILLEGAL_DATA_ADDR);
@@ -368,7 +368,7 @@ static bool mbs_fc03_hreg_read(struct modbus_context *ctx)
 			uint16_t reg;
 
 			/* Read integer register */
-			err = ctx->mbs_user_cb->holding_reg_rd(reg_addr, &reg);
+			err = ctx->mbs_user_cb->holding_reg_rd(ctx, reg_addr, &reg);
 			if (err == 0) {
 				sys_put_be16(reg, presp);
 				presp += sizeof(uint16_t);
@@ -379,7 +379,7 @@ static bool mbs_fc03_hreg_read(struct modbus_context *ctx)
 			uint32_t reg;
 
 			/* Read floating-point register */
-			err = ctx->mbs_user_cb->holding_reg_rd_fp(reg_addr, &fp);
+			err = ctx->mbs_user_cb->holding_reg_rd_fp(ctx, reg_addr, &fp);
 			if (err == 0) {
 				memcpy(&reg, &fp, sizeof(reg));
 				sys_put_be32(reg, presp);
@@ -388,7 +388,7 @@ static bool mbs_fc03_hreg_read(struct modbus_context *ctx)
 		}
 
 		if (err != 0) {
-			LOG_INF("Holding register address not supported");
+			LOG_INF("Holding register address not supported %d %d", reg_addr, err);
 			mbs_exception_rsp(ctx, MODBUS_EXC_ILLEGAL_DATA_ADDR);
 			return true;
 		}
@@ -478,7 +478,7 @@ static bool mbs_fc04_inreg_read(struct modbus_context *ctx)
 			uint16_t reg;
 
 			/* Read integer register */
-			err = ctx->mbs_user_cb->input_reg_rd(reg_addr, &reg);
+			err = ctx->mbs_user_cb->input_reg_rd(ctx, reg_addr, &reg);
 			if (err == 0) {
 				sys_put_be16(reg, presp);
 				presp += sizeof(uint16_t);
@@ -489,7 +489,7 @@ static bool mbs_fc04_inreg_read(struct modbus_context *ctx)
 			uint32_t reg;
 
 			/* Read floating-point register */
-			err = ctx->mbs_user_cb->input_reg_rd_fp(reg_addr, &fp);
+			err = ctx->mbs_user_cb->input_reg_rd_fp(ctx, reg_addr, &fp);
 			if (err == 0) {
 				memcpy(&reg, &fp, sizeof(reg));
 				sys_put_be32(reg, presp);
@@ -554,7 +554,7 @@ static bool mbs_fc05_coil_write(struct modbus_context *ctx)
 		coil_state = true;
 	}
 
-	err = ctx->mbs_user_cb->coil_wr(coil_addr, coil_state);
+	err = ctx->mbs_user_cb->coil_wr(ctx, coil_addr, coil_state);
 
 	if (err != 0) {
 		LOG_INF("Coil address not supported");
@@ -604,7 +604,7 @@ static bool mbs_fc06_hreg_write(struct modbus_context *ctx)
 	reg_addr = sys_get_be16(&ctx->rx_adu.data[0]);
 	reg_val = sys_get_be16(&ctx->rx_adu.data[2]);
 
-	err = ctx->mbs_user_cb->holding_reg_wr(reg_addr, reg_val);
+	err = ctx->mbs_user_cb->holding_reg_wr(ctx, reg_addr, reg_val);
 
 	if (err != 0) {
 		LOG_INF("Register address not supported");
@@ -780,7 +780,7 @@ static bool mbs_fc15_coils_write(struct modbus_context *ctx)
 			coil_state = false;
 		}
 
-		err = ctx->mbs_user_cb->coil_wr(coil_addr + coil_cntr,
+		err = ctx->mbs_user_cb->coil_wr(ctx, coil_addr + coil_cntr,
 						coil_state);
 
 		if (err != 0) {
@@ -900,7 +900,7 @@ static bool mbs_fc16_hregs_write(struct modbus_context *ctx)
 			uint16_t reg_val = sys_get_be16(prx_data);
 
 			prx_data += sizeof(uint16_t);
-			err = ctx->mbs_user_cb->holding_reg_wr(addr, reg_val);
+			err = ctx->mbs_user_cb->holding_reg_wr(ctx, addr, reg_val);
 		} else {
 			uint32_t reg_val = sys_get_be32(prx_data);
 			float fp;
@@ -908,7 +908,7 @@ static bool mbs_fc16_hregs_write(struct modbus_context *ctx)
 			/* Write to floating point register */
 			memcpy(&fp, &reg_val, sizeof(float));
 			prx_data += sizeof(uint32_t);
-			err = ctx->mbs_user_cb->holding_reg_wr_fp(addr, fp);
+			err = ctx->mbs_user_cb->holding_reg_wr_fp(ctx, addr, fp);
 		}
 
 		if (err != 0) {
@@ -932,7 +932,6 @@ bool modbus_server_handler(struct modbus_context *ctx)
 	uint8_t addr = ctx->rx_adu.unit_id;
 	uint8_t fc = ctx->rx_adu.fc;
 
-	LOG_DBG("Server RX handler %p", ctx);
 	update_msg_ctr(ctx);
 
 	if (ctx->rx_adu_err != 0) {

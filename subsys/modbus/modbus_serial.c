@@ -300,7 +300,7 @@ static int modbus_rtu_rx_adu(struct modbus_context *ctx)
 				    cfg->uart_buf_ctr - sizeof(ctx->rx_adu.crc));
 
 	if (ctx->rx_adu.crc != calc_crc) {
-		LOG_WRN("Calculated CRC does not match received CRC");
+		LOG_WRN("Calculated CRC does not match received CRC %d %d", ctx->rx_adu.crc, calc_crc);
 		return -EIO;
 	}
 
@@ -403,6 +403,7 @@ static void cb_handler_tx(struct modbus_context *ctx)
 	if (uart_irq_tx_complete(cfg->dev)) {
 		/* Disable transmission */
 		cfg->uart_buf_ptr = &cfg->uart_buf[0];
+		cfg->uart_buf_ctr = 0;
 		modbus_serial_tx_off(ctx);
 		modbus_serial_rx_on(ctx);
 	}
@@ -533,7 +534,6 @@ int modbus_serial_init(struct modbus_context *ctx,
 	struct modbus_serial_config *cfg = ctx->cfg;
 	const uint32_t if_delay_max = 3500000;
 	const uint32_t numof_bits = 11;
-	struct uart_config uart_cfg;
 
 	switch (param.mode) {
 	case MODBUS_MODE_RTU:
@@ -544,40 +544,10 @@ int modbus_serial_init(struct modbus_context *ctx,
 		return -ENOTSUP;
 	}
 
-	cfg->dev = device_get_binding(cfg->dev_name);
 	if (cfg->dev == NULL) {
 		LOG_ERR("Failed to get UART device %s",
 			log_strdup(cfg->dev_name));
 		return -ENODEV;
-	}
-
-	uart_cfg.baudrate = param.serial.baud,
-	uart_cfg.flow_ctrl = UART_CFG_FLOW_CTRL_NONE;
-
-	if (ctx->mode == MODBUS_MODE_ASCII) {
-		uart_cfg.data_bits = UART_CFG_DATA_BITS_7;
-	} else {
-		uart_cfg.data_bits = UART_CFG_DATA_BITS_8;
-	}
-
-	switch (param.serial.parity) {
-	case UART_CFG_PARITY_ODD:
-	case UART_CFG_PARITY_EVEN:
-		uart_cfg.parity = param.serial.parity;
-		uart_cfg.stop_bits = UART_CFG_STOP_BITS_1;
-		break;
-	case UART_CFG_PARITY_NONE:
-		/* Use of no parity requires 2 stop bits */
-		uart_cfg.parity = param.serial.parity;
-		uart_cfg.stop_bits = UART_CFG_STOP_BITS_2;
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	if (uart_configure(cfg->dev, &uart_cfg) != 0) {
-		LOG_ERR("Failed to configure UART");
-		return -EINVAL;
 	}
 
 	if (param.serial.baud <= 38400) {
@@ -587,7 +557,9 @@ int modbus_serial_init(struct modbus_context *ctx,
 		cfg->rtu_timeout = (numof_bits * if_delay_max) / 38400;
 	}
 
-	if (configure_gpio(ctx) != 0) {
+	int rc = configure_gpio(ctx);
+	if (rc != 0) {
+		LOG_ERR("Failed to configure GPIO %d", rc);
 		return -EIO;
 	}
 
@@ -599,7 +571,7 @@ int modbus_serial_init(struct modbus_context *ctx,
 	k_timer_user_data_set(&cfg->rtu_timer, ctx);
 
 	modbus_serial_rx_on(ctx);
-	LOG_INF("RTU timeout %u us", cfg->rtu_timeout);
+	LOG_DBG("RTU timeout %u us", cfg->rtu_timeout);
 
 	return 0;
 }

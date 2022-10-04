@@ -12,58 +12,9 @@ LOG_MODULE_REGISTER(modbus, CONFIG_MODBUS_LOG_LEVEL);
 #include <string.h>
 #include <sys/byteorder.h>
 #include <modbus_internal.h>
+#include <device.h>
 
 #define DT_DRV_COMPAT zephyr_modbus_serial
-
-#define MB_RTU_DEFINE_GPIO_CFG(inst, prop)				\
-	static struct gpio_dt_spec prop##_cfg_##inst = {		\
-		.port = DEVICE_DT_GET(DT_INST_PHANDLE(inst, prop)),	\
-		.pin = DT_INST_GPIO_PIN(inst, prop),			\
-		.dt_flags = DT_INST_GPIO_FLAGS(inst,  prop),		\
-	};
-
-#define MB_RTU_DEFINE_GPIO_CFGS(inst)					\
-	COND_CODE_1(DT_INST_NODE_HAS_PROP(inst, de_gpios),		\
-		    (MB_RTU_DEFINE_GPIO_CFG(inst, de_gpios)), ())	\
-	COND_CODE_1(DT_INST_NODE_HAS_PROP(inst, re_gpios),		\
-		    (MB_RTU_DEFINE_GPIO_CFG(inst, re_gpios)), ())
-
-DT_INST_FOREACH_STATUS_OKAY(MB_RTU_DEFINE_GPIO_CFGS)
-
-#define MB_RTU_ASSIGN_GPIO_CFG(inst, prop)			\
-	COND_CODE_1(DT_INST_NODE_HAS_PROP(inst, prop),		\
-		    (&prop##_cfg_##inst), (NULL))
-
-#define MODBUS_DT_GET_SERIAL_DEV(inst) {			\
-		.dev_name = DT_INST_BUS_LABEL(inst),		\
-		.de = MB_RTU_ASSIGN_GPIO_CFG(inst, de_gpios),	\
-		.re = MB_RTU_ASSIGN_GPIO_CFG(inst, re_gpios),	\
-	},
-
-#ifdef CONFIG_MODBUS_SERIAL
-static struct modbus_serial_config modbus_serial_cfg[] = {
-	DT_INST_FOREACH_STATUS_OKAY(MODBUS_DT_GET_SERIAL_DEV)
-};
-#endif
-
-#define MODBUS_DT_GET_DEV(inst) {				\
-		.iface_name = DT_INST_LABEL(inst),		\
-		.cfg = &modbus_serial_cfg[inst],		\
-	},
-
-#define DEFINE_MODBUS_RAW_ADU(x, _) {				\
-		.iface_name = "RAW_"#x,				\
-		.raw_tx_cb = NULL,				\
-		.mode = MODBUS_MODE_RAW,			\
-	},
-
-
-static struct modbus_context mb_ctx_tbl[] = {
-	DT_INST_FOREACH_STATUS_OKAY(MODBUS_DT_GET_DEV)
-#ifdef CONFIG_MODBUS_RAW_ADU
-	UTIL_LISTIFY(CONFIG_MODBUS_NUMOF_RAW_ADU, DEFINE_MODBUS_RAW_ADU, _)
-#endif
-};
 
 static void modbus_rx_handler(struct k_work *item)
 {
@@ -151,73 +102,21 @@ int modbus_tx_wait_rx_adu(struct modbus_context *ctx)
 	return ctx->rx_adu_err;
 }
 
-struct modbus_context *modbus_get_context(const uint8_t iface)
+static int modbus_init_iface(struct modbus_context *ctx)
 {
-	struct modbus_context *ctx;
-
-	if (iface >= ARRAY_SIZE(mb_ctx_tbl)) {
-		LOG_ERR("Interface %u not available", iface);
-		return NULL;
-	}
-
-	ctx = &mb_ctx_tbl[iface];
-
-	if (!atomic_test_bit(&ctx->state, MODBUS_STATE_CONFIGURED)) {
-		LOG_ERR("Interface not configured");
-		return NULL;
-	}
-
-	return ctx;
-}
-
-int modbus_iface_get_by_ctx(const struct modbus_context *ctx)
-{
-	for (int i = 0; i < ARRAY_SIZE(mb_ctx_tbl); i++) {
-		if (&mb_ctx_tbl[i] == ctx) {
-			return i;
-		}
-	}
-
-	return -ENODEV;
-}
-
-int modbus_iface_get_by_name(const char *iface_name)
-{
-	for (int i = 0; i < ARRAY_SIZE(mb_ctx_tbl); i++) {
-		if (strcmp(iface_name, mb_ctx_tbl[i].iface_name) == 0) {
-			return i;
-		}
-	}
-
-	return -ENODEV;
-}
-
-static struct modbus_context *modbus_init_iface(const uint8_t iface)
-{
-	struct modbus_context *ctx;
-
-	if (iface >= ARRAY_SIZE(mb_ctx_tbl)) {
-		LOG_ERR("Interface %u not available", iface);
-		return NULL;
-	}
-
-	ctx = &mb_ctx_tbl[iface];
-
 	if (atomic_test_and_set_bit(&ctx->state, MODBUS_STATE_CONFIGURED)) {
 		LOG_ERR("Interface allready used");
-		return NULL;
+		return -EINVAL;
 	}
 
 	k_mutex_init(&ctx->iface_lock);
 	k_sem_init(&ctx->client_wait_sem, 0, 1);
 	k_work_init(&ctx->server_work, modbus_rx_handler);
-
-	return ctx;
+	return 0;
 }
 
-int modbus_init_server(const int iface, struct modbus_iface_param param)
+int modbus_init_server(struct modbus_context *ctx, struct modbus_iface_param param)
 {
-	struct modbus_context *ctx = NULL;
 	int rc = 0;
 
 	if (!IS_ENABLED(CONFIG_MODBUS_SERVER)) {
@@ -232,8 +131,9 @@ int modbus_init_server(const int iface, struct modbus_iface_param param)
 		goto init_server_error;
 	}
 
-	ctx = modbus_init_iface(iface);
-	if (ctx == NULL) {
+	rc = modbus_init_iface(ctx);
+	if (rc != 0) {
+		LOG_ERR("Modbus server failed to set iface");
 		rc = -EINVAL;
 		goto init_server_error;
 	}
@@ -269,7 +169,7 @@ int modbus_init_server(const int iface, struct modbus_iface_param param)
 		modbus_reset_stats(ctx);
 	}
 
-	LOG_DBG("Modbus interface %s initialized", ctx->iface_name);
+	LOG_DBG("Modbus interface %d initialized", ctx->unit_id);
 
 	return 0;
 
@@ -281,9 +181,8 @@ init_server_error:
 	return rc;
 }
 
-int modbus_init_client(const int iface, struct modbus_iface_param param)
+int modbus_init_client(struct modbus_context *ctx, struct modbus_iface_param param)
 {
-	struct modbus_context *ctx = NULL;
 	int rc = 0;
 
 	if (!IS_ENABLED(CONFIG_MODBUS_CLIENT)) {
@@ -292,8 +191,8 @@ int modbus_init_client(const int iface, struct modbus_iface_param param)
 		goto init_client_error;
 	}
 
-	ctx = modbus_init_iface(iface);
-	if (ctx == NULL) {
+	rc = modbus_init_iface(ctx);
+	if (rc != 0) {
 		rc = -EINVAL;
 		goto init_client_error;
 	}
@@ -337,13 +236,10 @@ init_client_error:
 	return rc;
 }
 
-int modbus_disable(const uint8_t iface)
+int modbus_disable(struct modbus_context *ctx)
 {
-	struct modbus_context *ctx;
-
-	ctx = modbus_get_context(iface);
 	if (ctx == NULL) {
-		LOG_ERR("Interface %u not initialized", iface);
+		LOG_ERR("Interface not initialized");
 		return -EINVAL;
 	}
 
@@ -366,7 +262,7 @@ int modbus_disable(const uint8_t iface)
 	ctx->mbs_user_cb = NULL;
 	atomic_clear_bit(&ctx->state, MODBUS_STATE_CONFIGURED);
 
-	LOG_INF("Modbus interface %u disabled", iface);
+	LOG_INF("Modbus interface disabled");
 
 	return 0;
 }
