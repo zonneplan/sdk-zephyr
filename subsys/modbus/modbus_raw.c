@@ -33,26 +33,18 @@ int modbus_raw_rx_adu(struct modbus_context *ctx)
 
 int modbus_raw_tx_adu(struct modbus_context *ctx)
 {
-	int iface = modbus_iface_get_by_ctx(ctx);
 
 	if (ctx->mode != MODBUS_MODE_RAW) {
 		return -ENOTSUP;
 	}
 
-	if (iface < 0) {
-		return -ENODEV;
-	}
-
-	ctx->raw_tx_cb(iface, &ctx->tx_adu);
+	ctx->raw_tx_cb(ctx, &ctx->tx_adu);
 
 	return 0;
 }
 
-int modbus_raw_submit_rx(const int iface, const struct modbus_adu *adu)
+int modbus_raw_submit_rx(struct modbus_context *ctx, const struct modbus_adu *adu)
 {
-	struct modbus_context *ctx;
-
-	ctx = modbus_get_context(iface);
 
 	if (ctx == NULL) {
 		LOG_ERR("Interface not available");
@@ -119,14 +111,12 @@ void modbus_raw_set_server_failure(struct modbus_adu *adu)
 	adu->length = 1;
 }
 
-int modbus_raw_backend_txn(const int iface, struct modbus_adu *adu)
+int modbus_raw_backend_txn(struct modbus_context *ctx, struct modbus_adu *adu)
 {
-	struct modbus_context *ctx;
 	int err;
 
-	ctx = modbus_get_context(iface);
 	if (ctx == NULL) {
-		LOG_ERR("Interface %d not available", iface);
+		LOG_ERR("Modbus context not available");
 		modbus_set_exception(adu, MODBUS_EXC_GW_PATH_UNAVAILABLE);
 		return -ENODEV;
 	}
@@ -137,12 +127,11 @@ int modbus_raw_backend_txn(const int iface, struct modbus_adu *adu)
 	 */
 	if (ctx->client == false ||
 	    (ctx->mode != MODBUS_MODE_RTU && ctx->mode != MODBUS_MODE_ASCII)) {
-		LOG_ERR("Interface %d has wrong configuration", iface);
+		LOG_ERR("Modbus context has wrong configuration");
 		modbus_set_exception(adu, MODBUS_EXC_GW_PATH_UNAVAILABLE);
 		return -ENOTSUP;
 	}
 
-	LOG_DBG("Use backend interface %d", iface);
 	memcpy(&ctx->tx_adu, adu, sizeof(struct modbus_adu));
 	err = modbus_tx_wait_rx_adu(ctx);
 

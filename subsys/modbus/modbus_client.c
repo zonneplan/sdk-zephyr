@@ -290,13 +290,12 @@ static int mbc_send_cmd(struct modbus_context *ctx, const uint8_t unit_id,
 	return err;
 }
 
-int modbus_read_coils(const int iface,
+int modbus_read_coils(struct modbus_context *ctx,
 		      const uint8_t unit_id,
 		      const uint16_t start_addr,
 		      uint8_t *const coil_tbl,
 		      const uint16_t num_coils)
 {
-	struct modbus_context *ctx = modbus_get_context(iface);
 	int err;
 
 	if (ctx == NULL) {
@@ -315,13 +314,12 @@ int modbus_read_coils(const int iface,
 	return err;
 }
 
-int modbus_read_dinputs(const int iface,
+int modbus_read_dinputs(struct modbus_context *ctx,
 			const uint8_t unit_id,
 			const uint16_t start_addr,
 			uint8_t *const di_tbl,
 			const uint16_t num_di)
 {
-	struct modbus_context *ctx = modbus_get_context(iface);
 	int err;
 
 	if (ctx == NULL) {
@@ -340,13 +338,12 @@ int modbus_read_dinputs(const int iface,
 	return err;
 }
 
-int modbus_read_holding_regs(const int iface,
+int modbus_read_holding_regs(struct modbus_context *ctx,
 			     const uint8_t unit_id,
 			     const uint16_t start_addr,
 			     uint16_t *const reg_buf,
 			     const uint16_t num_regs)
 {
-	struct modbus_context *ctx = modbus_get_context(iface);
 	int err;
 
 	if (ctx == NULL) {
@@ -367,13 +364,12 @@ int modbus_read_holding_regs(const int iface,
 
 
 #ifdef CONFIG_MODBUS_FP_EXTENSIONS
-int modbus_read_holding_regs_fp(const int iface,
+int modbus_read_holding_regs_fp(struct modbus_context *ctx,
 			       const uint8_t unit_id,
 			       const uint16_t start_addr,
 			       float *const reg_buf,
 			       const uint16_t num_regs)
 {
-	struct modbus_context *ctx = modbus_get_context(iface);
 	int err;
 
 	if (ctx == NULL) {
@@ -393,13 +389,12 @@ int modbus_read_holding_regs_fp(const int iface,
 }
 #endif
 
-int modbus_read_input_regs(const int iface,
+int modbus_read_input_regs(struct modbus_context *ctx,
 			   const uint8_t unit_id,
 			   const uint16_t start_addr,
 			   uint16_t *const reg_buf,
 			   const uint16_t num_regs)
 {
-	struct modbus_context *ctx = modbus_get_context(iface);
 	int err;
 
 	if (ctx == NULL) {
@@ -418,12 +413,11 @@ int modbus_read_input_regs(const int iface,
 	return err;
 }
 
-int modbus_write_coil(const int iface,
+int modbus_write_coil(struct modbus_context *ctx,
 		      const uint8_t unit_id,
 		      const uint16_t coil_addr,
 		      const bool coil_state)
 {
-	struct modbus_context *ctx = modbus_get_context(iface);
 	int err;
 	uint16_t coil_val;
 
@@ -449,12 +443,11 @@ int modbus_write_coil(const int iface,
 	return err;
 }
 
-int modbus_write_holding_reg(const int iface,
+int modbus_write_holding_reg(struct modbus_context *ctx,
 			     const uint8_t unit_id,
 			     const uint16_t start_addr,
 			     const uint16_t reg_val)
 {
-	struct modbus_context *ctx = modbus_get_context(iface);
 	int err;
 
 	if (ctx == NULL) {
@@ -473,13 +466,13 @@ int modbus_write_holding_reg(const int iface,
 	return err;
 }
 
-int modbus_request_diagnostic(const int iface,
+int modbus_request_diagnostic(struct modbus_context *ctx,
 			      const uint8_t unit_id,
 			      const uint16_t sfunc,
 			      const uint16_t data,
 			      uint16_t *const data_out)
 {
-	struct modbus_context *ctx = modbus_get_context(iface);
+	
 	int err;
 
 	if (ctx == NULL) {
@@ -498,13 +491,12 @@ int modbus_request_diagnostic(const int iface,
 	return err;
 }
 
-int modbus_write_coils(const int iface,
+int modbus_write_coils(struct modbus_context *ctx,
 		       const uint8_t unit_id,
 		       const uint16_t start_addr,
 		       uint8_t *const coil_tbl,
 		       const uint16_t num_coils)
 {
-	struct modbus_context *ctx = modbus_get_context(iface);
 	size_t length = 0;
 	uint8_t *data_ptr;
 	size_t num_bytes;
@@ -542,13 +534,13 @@ int modbus_write_coils(const int iface,
 	return err;
 }
 
-int modbus_write_holding_regs(const int iface,
+int modbus_write_holding_regs(struct modbus_context *ctx,
 			      const uint8_t unit_id,
 			      const uint16_t start_addr,
 			      uint16_t *const reg_buf,
 			      const uint16_t num_regs)
 {
-	struct modbus_context *ctx = modbus_get_context(iface);
+	
 	size_t length = 0;
 	uint8_t *data_ptr;
 	size_t num_bytes;
@@ -590,13 +582,13 @@ int modbus_write_holding_regs(const int iface,
 }
 
 #ifdef CONFIG_MODBUS_FP_EXTENSIONS
-int modbus_write_holding_regs_fp(const int iface,
+int modbus_write_holding_regs_fp(struct modbus_context *ctx,
 				 const uint8_t unit_id,
 				 const uint16_t start_addr,
 				 float *const reg_buf,
 				 const uint16_t num_regs)
 {
-	struct modbus_context *ctx = modbus_get_context(iface);
+	
 	size_t length = 0;
 	uint8_t *data_ptr;
 	size_t num_bytes;
