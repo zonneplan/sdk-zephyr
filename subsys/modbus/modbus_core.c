@@ -44,12 +44,9 @@ static void modbus_rx_handler(struct k_work *item)
 		return;
 	}
 
-	LOG_WRN("RX handler");
-
 	if (ctx->client == true) {
 		k_sem_give(&ctx->client_wait_sem);
 	} else if (IS_ENABLED(CONFIG_MODBUS_SERVER)) {
-		LOG_WRN("RX handler call");
 		bool respond = modbus_server_handler(ctx);
 
 		if (respond) {
@@ -140,8 +137,6 @@ int modbus_init_server(struct modbus_context *ctx, struct modbus_iface_param par
 		rc = -EINVAL;
 		goto init_server_error;
 	}
-
-	LOG_DBG("After iface");
 
 	switch (param.mode) {
 	case MODBUS_MODE_RTU:
