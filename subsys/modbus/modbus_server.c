@@ -321,16 +321,11 @@ static bool mbs_fc03_hreg_read(struct modbus_context *ctx)
 
 	reg_addr = sys_get_be16(&ctx->rx_adu.data[0]);
 	reg_qty = sys_get_be16(&ctx->rx_adu.data[2]);
-	LOG_WRN("READ: addr: %x num: %d", reg_addr, reg_qty);
-	LOG_WRN("READ: cbs: %p holding: %p", ctx->mbs_user_cb, ctx->mbs_user_cb->holding_reg_rd);
-	LOG_WRN("ENABLED STATE: %d", IS_ENABLED(CONFIG_MODBUS_FP_EXTENSIONS));
 
 	if ((reg_addr < MODBUS_FP_EXTENSIONS_ADDR) ||
 	    !IS_ENABLED(CONFIG_MODBUS_FP_EXTENSIONS)) {
-			LOG_WRN("non ext");
 		/* Read integer register */
 		if (ctx->mbs_user_cb->holding_reg_rd == NULL) {
-			LOG_WRN("Why????");
 			mbs_exception_rsp(ctx, MODBUS_EXC_ILLEGAL_FC);
 			return true;
 		}
@@ -344,7 +339,6 @@ static bool mbs_fc03_hreg_read(struct modbus_context *ctx)
 		/* Get number of bytes needed for response. */
 		num_bytes = (uint8_t)(reg_qty * sizeof(uint16_t));
 	} else {
-		LOG_WRN("ext");
 		/* Read floating-point register */
 		if (ctx->mbs_user_cb->holding_reg_rd_fp == NULL) {
 			mbs_exception_rsp(ctx, MODBUS_EXC_ILLEGAL_FC);
@@ -938,7 +932,6 @@ bool modbus_server_handler(struct modbus_context *ctx)
 	uint8_t addr = ctx->rx_adu.unit_id;
 	uint8_t fc = ctx->rx_adu.fc;
 
-	LOG_DBG("Server RX handler %p", ctx);
 	update_msg_ctr(ctx);
 
 	if (ctx->rx_adu_err != 0) {
@@ -949,10 +942,8 @@ bool modbus_server_handler(struct modbus_context *ctx)
 
 		return false;
 	}
-	LOG_DBG("Server addr %d %d", addr, ctx->unit_id);
 
 	if (addr != 0 && addr != ctx->unit_id) {
-		LOG_DBG("Server addr %d != %d", addr, ctx->unit_id);
 		update_noresp_ctr(ctx);
 		return false;
 	}
@@ -964,8 +955,6 @@ bool modbus_server_handler(struct modbus_context *ctx)
 	ctx->tx_adu.fc = fc;
 
 	update_server_msg_ctr(ctx);
-
-	LOG_DBG("Server FC handler %d", fc);
 
 	switch (fc) {
 	case MODBUS_FC01_COIL_RD:
