@@ -87,13 +87,17 @@ static void dfll_init(void)
 	/* Route OSC8M to GCLK1 */
 	GCLK->GENCTRL.reg =
 	    GCLK_GENCTRL_ID(1) | GCLK_GENCTRL_SRC_OSC8M | GCLK_GENCTRL_GENEN;
+#elif defined(CONFIG_SOC_ATMEL_SAMD_OSC32K_AS_MAIN)
+	/* Route OSC8M to GCLK1 */
+	GCLK->GENCTRL.reg =
+	    GCLK_GENCTRL_ID(1) | GCLK_GENCTRL_SRC_OSC32K | GCLK_GENCTRL_GENEN;
 #else
 #error Unsupported main clock source.
 #endif
 
 	wait_gclk_synchronization();
 
-	/* Route GCLK1 to multiplexer 1 */
+	/* Route GCLK1 to multiplexer 0 */
 	GCLK->CLKCTRL.reg =
 	    GCLK_CLKCTRL_ID(0) | GCLK_CLKCTRL_GEN_GCLK1 | GCLK_CLKCTRL_CLKEN;
 	wait_gclk_synchronization();
@@ -112,6 +116,8 @@ static void dfll_init(void)
 	while (!SYSCTRL->PCLKSR.bit.DFLLRDY) {
 	}
 
+#if defined(CONFIG_SOC_ATMEL_SAMD_XOSC32K_AS_MAIN) || defined(CONFIG_SOC_ATMEL_SAMD_OSC8M_AS_MAIN)
+
 	SYSCTRL->DFLLCTRL.reg |= SYSCTRL_DFLLCTRL_MODE |
 #ifdef SYSCTRL_DFLLCTRL_WAITLOCK
 				 SYSCTRL_DFLLCTRL_WAITLOCK |
@@ -125,6 +131,46 @@ static void dfll_init(void)
 
 	while (!SYSCTRL->PCLKSR.bit.DFLLLCKC || !SYSCTRL->PCLKSR.bit.DFLLLCKF) {
 	}
+#elif defined(CONFIG_SOC_ATMEL_SAMD_OSC32K_AS_MAIN)
+	#define NVM_SW_CALIB_DFLL48M_COARSE_VAL 58
+
+	// Turn on DFLL
+	uint32_t coarse =( *((uint32_t *)(NVMCTRL_OTP4) + (NVM_SW_CALIB_DFLL48M_COARSE_VAL / 32)) >> (NVM_SW_CALIB_DFLL48M_COARSE_VAL % 32) )
+			& ((1 << 6) - 1);
+	if (coarse == 0x3f) {
+	coarse = 0x1f;
+	}
+	// TODO(tannewt): Load this value from memory we've written previously. There
+	// isn't a value from the Atmel factory.
+	uint32_t fine = 0x1ff;
+
+	SYSCTRL->DFLLVAL.bit.COARSE = coarse;
+	SYSCTRL->DFLLVAL.bit.FINE = fine;
+	/* Write full configuration to DFLL control register */
+	SYSCTRL->DFLLMUL.reg = SYSCTRL_DFLLMUL_CSTEP( 0x1f / 4 ) | // Coarse step is 31, half of the max value
+				SYSCTRL_DFLLMUL_FSTEP( 10 ) |
+				SYSCTRL_DFLLMUL_MUL( (48000) ) ;
+
+	SYSCTRL->DFLLCTRL.reg = 0;
+
+	while ( (SYSCTRL->PCLKSR.reg & SYSCTRL_PCLKSR_DFLLRDY) == 0 )
+	{
+	/* Wait for synchronization */
+	}
+
+	SYSCTRL->DFLLCTRL.reg =  SYSCTRL_DFLLCTRL_MODE |
+				SYSCTRL_DFLLCTRL_CCDIS |
+				SYSCTRL_DFLLCTRL_USBCRM | /* USB correction */
+				SYSCTRL_DFLLCTRL_BPLCKC;
+
+	while (!SYSCTRL->PCLKSR.bit.DFLLRDY) {
+	}
+
+	/* Enable the DFLL */
+	SYSCTRL->DFLLCTRL.bit.ENABLE = 1;
+#else
+	#error Unsupported main clock source.
+#endif
 
 	while (!SYSCTRL->PCLKSR.bit.DFLLRDY) {
 	}
